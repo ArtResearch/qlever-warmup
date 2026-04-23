@@ -1,0 +1,532 @@
+prefixes:
+  crm: "http://www.cidoc-crm.org/cidoc-crm/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  aat: "http://vocab.getty.edu/aat/"
+  custom: "https://artresearch.net/custom/"
+  pharos-meta: "https://artresearch.net/resource/pharos/vocab/meta/"
+  rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  image-api: "https://artresearch.net/image-api/image-api/"
+  skos: "http://www.w3.org/2004/02/skos/core#"
+  rdfs: "http://www.w3.org/2000/01/rdf-schema#"
+
+# From "Frequent predicates" (cleaned)
+properties:
+  - crm:P9i_forms_part_of
+  - crm:P177_assigned_property_of_type
+  - crm:P140_assigned_attribute_to
+  - crm:P141_assigned
+  - crm:P134_continued
+  - crm:P1_is_identified_by
+  - crm:P14_carried_out_by
+  - crm:P4_has_time-span
+  - crm:P50_has_current_keeper
+  - crm:P2_has_type
+  - crm:P45_consists_of
+  - crm:P32_used_general_technique
+  - crm:P55_has_current_location
+  - crm:P46_is_composed_of
+  - crm:P46i_forms_part_of
+  - crm:P65_shows_visual_item
+  - crm:P138_represents
+  - crm:P127_has_broader_term
+  - crm:P82a_begin_of_the_begin
+  - crm:P82b_end_of_the_end
+  - crm:P24i_changed_ownership_through
+  - crm:P3_has_note
+  - crm:P108i_was_produced_by
+  - crm:P9_consists_of
+  - crm:P75_possesses
+  - crm:P104_is_subject_to
+  - crm:P70_documents
+  - crm:P130_shows_features_of
+  - crm:P190_has_symbolic_content
+  - crm:P82_at_some_time_within
+  - crm:P89_falls_within
+  - crm:P89i_contains
+  - rdfs:label
+  - custom:has_image
+  - custom:thumbnail_url
+  - custom:iiif_url
+  - custom:imageOrder
+  - custom:preview_url
+  - custom:sameAs
+  - crm:P94i_was_created_by
+  - crm:P01i_is_domain_of
+  - crm:P02_has_range
+  - crm:P11_had_participant
+  - crm:P12i_was_present_at
+  - crm:P67i_is_referred_to_by
+  - crm:P70i_is_documented_in
+  - crm:P98i_was_born
+  - crm:P100i_died_in
+  - crm:P107_has_current_or_former_member
+  - crm:P128_carries
+  - custom:objectSameAs
+  - custom:work_preferred_photo
+
+# From "Frequent patterns without order" (cleaned)
+patterns:
+  # because we can have nested productions
+  - crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P14_carried_out_by
+
+  # to get material hierarchy
+  - crm:P45_consists_of/(crm:P127_has_broader_term*)
+
+  # subjects
+  - crm:P65_shows_visual_item/crm:P2_has_type
+
+  # date/time
+  - crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P4_has_time-span
+
+  # concepts
+  - crm:P127_has_broader_term
+
+  # identification content
+  - crm:P1_is_identified_by/crm:P190_has_symbolic_content
+
+  # title (identified by with type hierarchy)
+  - crm:P1_is_identified_by/crm:P2_has_type/(crm:P127_has_broader_term*)
+
+  # photographer
+  - crm:P65_shows_visual_item/crm:P94i_was_created_by
+  - crm:P65_shows_visual_item/crm:P94i_was_created_by/crm:P14_carried_out_by
+
+  # photo license
+  - crm:P104_is_subject_to/crm:P2_has_type
+
+  # production chain with PC14
+  - crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P01i_is_domain_of
+
+  # original value production chain
+  - crm:P108i_was_produced_by/crm:P9i_forms_part_of*
+
+  # place hierarchy
+  - crm:P55_has_current_location/(crm:P89_falls_within*)
+
+  # parts
+  - crm:P46_is_composed_of+
+  - crm:P46i_forms_part_of+
+
+# Safe explicit warmup queries from "Warmup Queries" (only those without placeholders)
+queries:
+  - |
+    SELECT ?subject WHERE {
+      ?subject crm:P2_has_type <http://vocab.getty.edu/aat/300133025> .
+    }
+  - |
+    SELECT ?subject WHERE {
+      ?subject crm:P2_has_type <http://vocab.getty.edu/aat/300133025> .
+    } INTERNAL SORT BY ?subject
+
+  - |
+    SELECT ?subject ?hasImage WHERE {
+      ?subject crm:P2_has_type <http://vocab.getty.edu/aat/300133025>;
+        custom:has_image ?hasImage.
+    }
+  - |
+    SELECT ?subject ?hasImage WHERE {
+      ?subject crm:P2_has_type <http://vocab.getty.edu/aat/300133025>;
+        custom:has_image ?hasImage.
+    } INTERNAL SORT BY ?subject
+
+  # work provider pattern (photoarchive)
+  # https://artresearch.net/resource/fr/Work_has_Provider
+  - |
+    SELECT ?right ?document ?value ?subject WHERE {
+      ?value crm:P75_possesses ?right .
+      ?document crm:P104_is_subject_to ?right .
+      ?document crm:P70_documents ?subject .
+    }
+  - |
+    SELECT ?right ?document ?value ?subject WHERE {
+      ?value crm:P75_possesses ?right .
+      ?document crm:P104_is_subject_to ?right .
+      ?document crm:P70_documents ?subject .
+    } INTERNAL SORT BY ?subject
+
+  # subjects
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject (crm:P65_shows_visual_item/crm:P2_has_type) ?s.
+      ?s (crm:P2_has_type/(crm:P127_has_broader_term*)) <https://artresearch.net/resource/pharos/vocab/meta/subject>;
+         ((crm:P130_shows_features_of?)/(crm:P127_has_broader_term*)) ?value.
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject (crm:P65_shows_visual_item/crm:P2_has_type) ?s.
+      ?s (crm:P2_has_type/(crm:P127_has_broader_term*)) <https://artresearch.net/resource/pharos/vocab/meta/subject>;
+         ((crm:P130_shows_features_of?)/(crm:P127_has_broader_term*)) ?value.
+    } INTERNAL SORT BY ?subject
+
+  # production date
+  - |
+    SELECT ?subject WHERE {
+      { ?subject (crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P4_has_time-span) ?timeSpan. }
+      FILTER(EXISTS { ?timeSpan (crm:P82a_begin_of_the_begin|crm:P82b_end_of_the_end) ?date. })
+      OPTIONAL { ?timeSpan crm:P82a_begin_of_the_begin ?begin. }
+      OPTIONAL { ?timeSpan crm:P82b_end_of_the_end ?end. }
+    }
+  - |
+    SELECT ?subject WHERE {
+      { ?subject (crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P4_has_time-span) ?timeSpan. }
+      FILTER(EXISTS { ?timeSpan (crm:P82a_begin_of_the_begin|crm:P82b_end_of_the_end) ?date. })
+      OPTIONAL { ?timeSpan crm:P82a_begin_of_the_begin ?begin. }
+      OPTIONAL { ?timeSpan crm:P82b_end_of_the_end ?end. }
+    } INTERNAL SORT BY ?subject
+
+  # technique
+  - |
+    SELECT ?subject WHERE {
+      ?subject (crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P32_used_general_technique) ?techinque.
+      ?techinque (crm:P127_has_broader_term*) ?value.
+    }
+  - |
+    SELECT ?subject WHERE {
+      ?subject (crm:P108i_was_produced_by/(crm:P9_consists_of*)/crm:P32_used_general_technique) ?techinque.
+      ?techinque (crm:P127_has_broader_term*) ?value.
+    } INTERNAL SORT BY ?subject
+
+  # types
+  - |
+    SELECT ?subject WHERE {
+      ?subject crm:P2_has_type ?type.
+      ?type (crm:P127_has_broader_term*) ?value.
+      FILTER(?type NOT IN(<http://vocab.getty.edu/aat/300133025>, <https://artresearch.net/resource/pharos/vocab/meta/photographic_print>))
+    }
+  - |
+    SELECT ?subject WHERE {
+      ?subject crm:P2_has_type ?type.
+      ?type (crm:P127_has_broader_term*) ?value.
+      FILTER(?type NOT IN(<http://vocab.getty.edu/aat/300133025>, <https://artresearch.net/resource/pharos/vocab/meta/photographic_print>))
+    } INTERNAL SORT BY ?subject
+
+  # identified by pharos preferred name
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?id .
+      ?id crm:P2_has_type pharos-meta:pharos_preferred_name .
+      ?id crm:P190_has_symbolic_content ?value .
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?id .
+      ?id crm:P2_has_type pharos-meta:pharos_preferred_name .
+      ?id crm:P190_has_symbolic_content ?value .
+    } INTERNAL SORT BY ?subject
+
+  # identified by preferred name
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?id .
+      ?id crm:P2_has_type pharos-meta:preferred_name .
+      ?id crm:P190_has_symbolic_content ?value .
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?id .
+      ?id crm:P2_has_type pharos-meta:preferred_name .
+      ?id crm:P190_has_symbolic_content ?value .
+    } INTERNAL SORT BY ?subject
+
+  # identified by broader preferred name
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?id .
+      ?id crm:P2_has_type ?type .
+      ?type crm:P127_has_broader_term pharos-meta:preferred_name .
+      ?id crm:P190_has_symbolic_content ?value .
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?id .
+      ?id crm:P2_has_type ?type .
+      ?type crm:P127_has_broader_term pharos-meta:preferred_name .
+      ?id crm:P190_has_symbolic_content ?value .
+    } INTERNAL SORT BY ?subject
+
+  # place
+  - |
+    SELECT ?subject ?value WHERE {
+        ?subject crm:P55_has_current_location ?place.
+        ?place (crm:P89_falls_within*) ?value;
+          (^(custom:sameAs?)/crm:P2_has_type/(crm:P127_has_broader_term*)) <https://artresearch.net/resource/pharos/vocab/meta/geographical_entity>.
+    }  
+  - |
+    SELECT ?subject ?value WHERE {
+        ?subject crm:P55_has_current_location ?place.
+        ?place (crm:P89_falls_within*) ?value;
+          (^(custom:sameAs?)/crm:P2_has_type/(crm:P127_has_broader_term*)) <https://artresearch.net/resource/pharos/vocab/meta/geographical_entity>.
+    } INTERNAL SORT BY ?subject
+  - |
+    SELECT ?subject ?value WHERE {
+        ?subject crm:P55_has_current_location ?place.
+        ?place (crm:P89_falls_within*) ?value;
+          (^(custom:sameAs?)/crm:P2_has_type/(crm:P127_has_broader_term*)) <https://artresearch.net/resource/pharos/vocab/meta/geographical_entity>.
+    } INTERNAL SORT BY ?value
+
+  # original_value
+  - |
+    SELECT ?attribution ?provUri ?cataloging ?value WHERE {
+      ?attribution crm:P134_continued* ?provUri .
+      ?provUri crm:P9i_forms_part_of ?cataloging .
+      ?cataloging crm:P2_has_type <http://vocab.getty.edu/aat/300054628> .
+      ?provUri crm:P141_assigned ?value .
+    }
+  - |
+    SELECT ?attribution ?provUri ?cataloging ?value WHERE {
+      ?attribution crm:P134_continued* ?provUri .
+      ?provUri crm:P9i_forms_part_of ?cataloging .
+      ?cataloging crm:P2_has_type <http://vocab.getty.edu/aat/300054628> .
+      ?provUri crm:P141_assigned ?value .
+    } INTERNAL SORT BY ?attribution
+
+  - |
+    SELECT ?production ?object ?visualItem WHERE {
+      OPTIONAL {
+        ?object crm:P108i_was_produced_by/crm:P9i_forms_part_of* ?production .
+      }
+      
+      OPTIONAL {
+        ?object crm:P65_shows_visual_item ?visualItem .
+      }    
+    }
+
+  # original_value_creator
+  - |
+    SELECT ?object ?property ?subject WHERE {
+      {
+        ?object crm:P108i_was_produced_by/crm:P9_consists_of* ?production .
+        ?attribution crm:P140_assigned_attribute_to ?production .
+        ?attribution crm:P141_assigned ?subject .
+        ?attribution crm:P177_assigned_property_of_type ?property .
+      }
+      {
+        ?attribution crm:P134_continued* ?provUri .
+        ?provUri crm:P9i_forms_part_of ?cataloging .
+        ?cataloging crm:P2_has_type <http://vocab.getty.edu/aat/300054628> .
+        ?provUri crm:P141_assigned ?value .
+      }
+    } INTERNAL SORT BY ?object ?property ?subject
+
+  # original_record_identifier
+  - |
+    SELECT ?attr ?subject ?work ?titleAttr ?appellation ?value WHERE {
+        ?attr crm:P141_assigned ?subject .
+        ?attr crm:P134_continued*/crm:P140_assigned_attribute_to ?work .
+        FILTER NOT EXISTS { ?attr crm:P134_continued ?nextAttr }
+        ?titleAttr crm:P177_assigned_property_of_type crm:P1_is_identified_by .
+        ?titleAttr crm:P140_assigned_attribute_to ?work .
+        ?titleAttr crm:P141_assigned ?appellation .
+        ?appellation crm:P2_has_type/crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/preferred_identifier> .
+        ?appellation crm:P190_has_symbolic_content ?value .
+    } INTERNAL SORT BY ?subject
+
+  # original_record_title
+  - | 
+    SELECT ?attr ?subject ?work ?titleAttr ?appellation ?value WHERE {
+      ?attr crm:P141_assigned ?subject .
+      ?attr crm:P134_continued/crm:P140_assigned_attribute_to ?work .
+      ?titleAttr crm:P177_assigned_property_of_type crm:P1_is_identified_by .
+      ?titleAttr crm:P140_assigned_attribute_to ?work .
+      ?titleAttr crm:P141_assigned ?appellation .
+      ?appellation crm:P2_has_type/crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/name> .
+      ?appellation crm:P190_has_symbolic_content ?value .
+    } INTERNAL SORT BY ?subject
+
+  # provenance
+  - | 
+    SELECT ?subject ?value ?x WHERE {
+      ?subject crm:P140_assigned_attribute_to ?x .
+      ?subject crm:P134_continued*/crm:P9i_forms_part_of/crm:P14_carried_out_by ?value .
+    }
+  - | 
+    SELECT ?subject ?value ?x WHERE {
+      ?subject crm:P140_assigned_attribute_to ?x .
+      ?subject crm:P134_continued*/crm:P9i_forms_part_of/crm:P14_carried_out_by ?value .
+    } INTERNAL SORT BY ?subject
+  - | 
+    SELECT ?subject ?value ?x WHERE {
+      ?subject crm:P140_assigned_attribute_to ?x .
+      ?subject crm:P134_continued*/crm:P9i_forms_part_of/crm:P14_carried_out_by ?value .
+    } INTERNAL SORT BY ?value
+
+  # creator
+  - |
+    SELECT ?subject ?value ?part ?production WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production crm:P14_carried_out_by ?value .
+    } INTERNAL SORT BY ?subject
+
+  # object_part_of_hierarchy
+  - |
+    SELECT ?subject ?item WHERE {
+      {
+        ?subject crm:P46i_forms_part_of+ ?item .
+      } UNION {
+        ?subject crm:P46_is_composed_of+ ?item .
+      }
+    }    
+
+  # last_known_location
+  - |
+    SELECT ?subject ?value WHERE {
+      {
+        ?parent crm:P55_has_current_location ?value .
+        ?value crm:P2_has_type/crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/geographical_entity> .
+        ?subject crm:P46i_forms_part_of* ?parent .
+      }
+
+      # architectural objects don't have "Last Known Location" they have "Location"
+      MINUS { 
+        ?subject crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/built_work> .  
+      }
+    } INTERNAL SORT BY ?subject
+
+  # title
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P1_is_identified_by ?value.
+      ?value crm:P2_has_type/crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/preferred_name> .
+    } INTERNAL SORT BY ?subject
+  
+  # photo
+  - |
+    SELECT ?subject ?value WHERE {
+      ?value crm:P65_shows_visual_item/crm:P138_represents ?subject .
+      ?value crm:P2_has_type/crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/photograph> .
+    } INTERNAL SORT BY ?subject
+
+  # subject
+  - |
+    SELECT ?subject ?value ?visualItem ?type WHERE {
+      ?subject crm:P65_shows_visual_item ?visualItem .
+      ?visualItem crm:P2_has_type ?value .
+      ?value crm:P2_has_type ?type .
+      ?type crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/subject> .
+    } INTERNAL SORT BY ?subject
+
+  # location
+  - |
+    SELECT ?subject ?type ?parent ?value WHERE {
+      ?subject crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/built_work> .
+      ?subject crm:P46i_forms_part_of* ?parent .
+      ?parent crm:P55_has_current_location ?value .
+      
+      ?value crm:P2_has_type ?type .
+      ?type crm:P127_has_broader_term* <https://artresearch.net/resource/pharos/vocab/meta/geographical_entity> .
+    } INTERNAL SORT BY ?subject
+
+  # part of hierarchy
+  - |
+    SELECT ?subject ?item WHERE {
+      {
+        ?subject crm:P46i_forms_part_of+ ?item .
+      } UNION {
+        ?subject crm:P46_is_composed_of+ ?item .
+      }
+    }
+
+  # production participant
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E7_Activity .
+      ?production crm:P14_carried_out_by ?value .
+      MINUS {
+        ?value crm:P2_has_type pharos-meta:culture .
+      }
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E7_Activity .
+      ?production crm:P14_carried_out_by ?value .
+      MINUS {
+        ?value crm:P2_has_type pharos-meta:culture .
+      }
+    } INTERNAL SORT BY ?subject
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E7_Activity .
+      ?production crm:P14_carried_out_by ?value .
+      MINUS {
+        ?value crm:P2_has_type pharos-meta:culture .
+      }
+    } INTERNAL SORT BY ?value
+
+  # production
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E12_Production .
+      ?production crm:P14_carried_out_by ?value .
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E12_Production .
+      ?production crm:P14_carried_out_by ?value .
+    } INTERNAL SORT BY ?subject
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E12_Production .
+      ?production crm:P14_carried_out_by ?value .
+    } INTERNAL SORT BY ?value
+
+  # culture
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E12_Production .
+      ?production crm:P14_carried_out_by ?value .
+      ?value crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/culture> .
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E12_Production .
+      ?production crm:P14_carried_out_by ?value .
+      ?value crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/culture> .
+    } INTERNAL SORT BY ?subject
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?production .
+      ?production a crm:E12_Production .
+      ?production crm:P14_carried_out_by ?value .
+      ?value crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/culture> .
+    } INTERNAL SORT BY ?value    
+
+  # style/period
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?value .
+      ?value a crm:E7_Activity .
+      ?value crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/styles_and_periods> .
+    }
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?value .
+      ?value a crm:E7_Activity .
+      ?value crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/styles_and_periods> .
+    } INTERNAL SORT BY ?subject
+  - |
+    SELECT ?subject ?value WHERE {
+      ?subject crm:P108i_was_produced_by ?part .
+      ?part crm:P9_consists_of* ?value .
+      ?value a crm:E7_Activity .
+      ?value crm:P2_has_type <https://artresearch.net/resource/pharos/vocab/meta/styles_and_periods> .
+    } INTERNAL SORT BY ?value
